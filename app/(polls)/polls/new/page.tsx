@@ -24,7 +24,12 @@ async function createPollAction(formData: FormData) {
   });
 
   if (!res.ok) {
-    throw new Error('Failed to create poll');
+    let message = 'Failed to create poll';
+    try {
+      const data = await res.json();
+      if (data?.error) message = data.error;
+    } catch {}
+    throw new Error(message);
   }
 
   redirect('/polls');
