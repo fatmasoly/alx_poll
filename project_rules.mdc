@@ -1,0 +1,48 @@
+---
+description: Project-specific rules and conventions for the Polling App with QR Code Sharing project.
+globs:
+alwaysApply: true
+---
+
+# Polling App Rules
+
+## 1. Project Structure
+- All polls live inside `/app/polls/[pollId]/`.
+- API routes live inside `/app/api/*`.
+- Shared components live in `/components/`.
+- Supabase client config and utilities go inside `/lib/`.
+
+## 2. Forms & UI
+- Use **react-hook-form** for building forms.  
+- Use **shadcn/ui components** (e.g., `<Button>`, `<Input>`, `<Form>`) for consistent UI.  
+- Do **not** use plain HTML forms unless explicitly required.  
+- Validation should be handled via `react-hook-form` resolvers.
+
+## 3. Supabase Usage
+- Always use the Supabase client from `/lib/supabaseClient.ts`.  
+- Do **not** call `createClient` inline in components or handlers.  
+- Supabase is the source of truth for authentication and database operations.  
+- User context comes from `supabase.auth.getUser()` in Server Components.  
+
+## 4. Data Fetching & Mutations
+- Use **Next.js Server Components** for fetching poll data (❌ don’t fetch in `useEffect` inside page components).  
+- Use **Server Actions** for poll creation and voting.  
+- Do not build client-only fetch wrappers unless there’s no Server Action alternative.  
+
+## 5. Poll Schema Expectations
+Each Poll must include:
+- `question: string`
+- `options: string[]`
+- `createdBy: string` (from Supabase auth)
+- `createdAt: Date`
+- `expiresAt?: Date` (optional expiration)
+
+---
+
+## ✅ Checklist for AI Responses
+When generating code for this project, verify:
+- [ ] Does it place files in the correct `/app/` or `/components/` folder?  
+- [ ] Does it scaffold forms with **react-hook-form** and **shadcn/ui**?  
+- [ ] Does it fetch/mutate data using **Server Components** + **Server Actions**?  
+- [ ] Does it use Supabase client from `/lib/` instead of inline?  
+- [ ] Does it follow the Poll schema?  
