@@ -22,7 +22,7 @@ interface Poll {
 }
 
 interface PollPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 function generateUserId(): string {
@@ -36,15 +36,27 @@ export default function PollDetailPage({ params }: PollPageProps) {
   const [voting, setVoting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pollId, setPollId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPoll();
-  }, []);
+    // Extract pollId from params promise
+    params.then(({ id }) => {
+      setPollId(id);
+    });
+  }, [params]);
+
+  useEffect(() => {
+    if (pollId) {
+      fetchPoll();
+    }
+  }, [pollId]);
 
   async function fetchPoll() {
+    if (!pollId) return;
+    
     try {
       const baseUrl = getClientBaseUrl();
-      const res = await fetch(`${baseUrl}/api/polls/${params.id}`, { 
+      const res = await fetch(`${baseUrl}/api/polls/${pollId}`, { 
         cache: 'no-store' 
       });
       
@@ -66,7 +78,7 @@ export default function PollDetailPage({ params }: PollPageProps) {
   }
 
   async function handleVote(optionId: string) {
-    if (voting || hasVoted) return;
+    if (voting || hasVoted || !pollId) return;
 
     setVoting(true);
     setError(null);
@@ -75,7 +87,7 @@ export default function PollDetailPage({ params }: PollPageProps) {
       const baseUrl = getClientBaseUrl();
       const userId = generateUserId();
       
-      const res = await fetch(`${baseUrl}/api/polls/${params.id}/vote`, {
+      const res = await fetch(`${baseUrl}/api/polls/${pollId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optionId, userId }),
