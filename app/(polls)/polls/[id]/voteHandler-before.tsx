@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,57 +37,70 @@ export default function PollDetailPage({ params }: PollPageProps) {
   const [hasVoted, setHasVoted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pollId, setPollId] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+  const baseUrlRef = useRef<string>(getClientBaseUrl());
 
   useEffect(() => {
     // Extract pollId from params promise
     params.then(({ id }) => {
-      setPollId(id);
+      if (isMountedRef.current) {
+        setPollId(id);
+      }
     });
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [params]);
 
-  useEffect(() => {
-    if (pollId) {
-      fetchPoll();
-    }
-  }, [pollId]);
-
-  async function fetchPoll() {
+  const fetchPoll = useCallback(async () => {
     if (!pollId) return;
-    
+
+    const abortController = new AbortController();
     try {
-      const baseUrl = getClientBaseUrl();
-      const res = await fetch(`${baseUrl}/api/polls/${pollId}`, { 
-        cache: 'no-store' 
+      const res = await fetch(`${baseUrlRef.current}/api/polls/${pollId}`, {
+        cache: 'no-store',
+        signal: abortController.signal,
       });
-      
+
       if (!res.ok) {
         if (res.status === 404) {
           notFound();
         }
         throw new Error('Failed to fetch poll');
       }
-      
+
       const data = await res.json();
-      setPoll(data.poll);
+      if (isMountedRef.current) {
+        setPoll(data.poll);
+      }
     } catch (err) {
-      setError('Failed to load poll');
+      if (isMountedRef.current) {
+        setError('Failed to load poll');
+      }
       console.error('Error fetching poll:', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }
+  }, [pollId]);
 
-  async function handleVote(optionId: string) {
+  useEffect(() => {
+    if (pollId) {
+      fetchPoll();
+    }
+  }, [pollId, fetchPoll]);
+
+  const handleVote = useCallback(async (optionId: string) => {
     if (voting || hasVoted || !pollId) return;
 
     setVoting(true);
     setError(null);
 
     try {
-      const baseUrl = getClientBaseUrl();
       const userId = generateUserId();
-      
-      const res = await fetch(`${baseUrl}/api/polls/${pollId}/vote`, {
+
+      const res = await fetch(`${baseUrlRef.current}/api/polls/${pollId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optionId, userId }),
@@ -99,17 +112,23 @@ export default function PollDetailPage({ params }: PollPageProps) {
       }
 
       // Vote successful
-      setHasVoted(true);
-      
+      if (isMountedRef.current) {
+        setHasVoted(true);
+      }
+
       // Refresh poll data to get updated vote counts
       await fetchPoll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit vote');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to submit vote');
+      }
       console.error('Error voting:', err);
     } finally {
-      setVoting(false);
+      if (isMountedRef.current) {
+        setVoting(false);
+      }
     }
-  }
+  }, [voting, hasVoted, pollId, fetchPoll]);
 
   if (loading) {
     return (
@@ -220,3 +239,5 @@ export default function PollDetailPage({ params }: PollPageProps) {
     </div>
   );
 }
+
+
